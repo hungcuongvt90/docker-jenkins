@@ -9,7 +9,8 @@ group "linux" {
     "debian_jdk11",
     "debian_slim_jdk8",
     "debian_slim_jdk11",
-    "rhel_ubi8_jdk11"
+    "rhel_ubi8_jdk11",
+    "ubuntu_jdk11"
   ]
 }
 
@@ -18,6 +19,7 @@ group "linux-arm64" {
     "almalinux_jdk11",
     "debian_jdk11",
     "rhel_ubi8_jdk11",
+    "ubuntu_jdk11"
   ]
 }
 
@@ -32,11 +34,11 @@ group "linux-ppc64le" {
 }
 
 variable "JENKINS_VERSION" {
-  default = "2.303"
+  default = "2.303.1"
 }
 
 variable "JENKINS_SHA" {
-  default = "4dfe49cd7422ec4317a7c7a7c083f40fa475a58a7747bd94187b2cf222006ac0"
+  default = "4aae135cde63e398a1f59d37978d97604cb595314f7041d2d3bac3f0bb32c065"
 }
 
 variable "REGISTRY" {
@@ -44,7 +46,7 @@ variable "REGISTRY" {
 }
 
 variable "JENKINS_REPO" {
-  default = "jenkins/jenkins"
+  default = "hungcuongvt90/jenkins"
 }
 
 variable "LATEST_WEEKLY" {
@@ -236,6 +238,54 @@ target "rhel_ubi8_jdk11" {
     "${REGISTRY}/${JENKINS_REPO}:${JENKINS_VERSION}-rhel-ubi8-jdk11",
     equal(LATEST_WEEKLY, "true") ? "${REGISTRY}/${JENKINS_REPO}:rhel-ubi8-jdk11" : "",
     equal(LATEST_LTS, "true") ? "${REGISTRY}/${JENKINS_REPO}:lts-rhel-ubi8-jdk11" : "",
+  ]
+  platforms = ["linux/amd64", "linux/arm64"]
+}
+
+
+variable "USER" {
+  default = "cuong"
+}
+variable "GROUP" {
+  default = "cuong"
+}
+variable "UID" {
+  default = "1000"
+}
+variable "GID" {
+  default = "1000"
+}
+variable "HTTP_PORT" {
+  default = "8080"
+}
+variable "AGENT_PORT" {
+  default = "40000"
+}
+variable "JENKINS_HOME" {
+  default = "/home/cuong/jenkins_home"
+}
+variable "DOCKER_GID" {
+  default = "115"
+}
+
+target "ubuntu_jdk11" {
+  dockerfile = "11/ubuntu/focal/Dockerfile"
+  context = "."
+  args = {
+    JENKINS_VERSION = JENKINS_VERSION
+    JENKINS_SHA = JENKINS_SHA
+    PLUGIN_CLI_VERSION = PLUGIN_CLI_VERSION
+    USER = USER
+    GROUP = GROUP
+    UID = UID
+    GID = GID
+    HTTP_PORT = HTTP_PORT
+    AGENT_PORT = AGENT_PORT
+    JENKINS_HOME = JENKINS_HOME
+    DOCKER_GID = DOCKER_GID
+  }
+  tags = [
+    "${REGISTRY}/${JENKINS_REPO}:ubuntu-jenkins-${JENKINS_VERSION}-${USER}"
   ]
   platforms = ["linux/amd64", "linux/arm64"]
 }

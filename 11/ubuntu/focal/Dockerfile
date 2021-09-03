@@ -1,3 +1,13 @@
+FROM eclipse-temurin:11.0.12_7-jdk-focal as jre-build
+
+RUN jlink \
+         --add-modules ALL-MODULE-PATH \
+         --strip-debug \
+         --no-man-pages \
+         --no-header-files \
+         --compress=2 \
+         --output /javaruntime
+
 FROM ubuntu:focal
 
 # Install git lfs on Debian stretch per https://github.com/git-lfs/git-lfs/wiki/Installation#debian-and-ubuntu
@@ -25,10 +35,10 @@ ENV GID=${GID:-1000}
 ENV HTTP_PORT=${HTTP_PORT:-8080}
 ENV AGENT_PORT=${AGENT_PORT:-50000}
 ENV JENKINS_HOME=${JENKINS_HOME:-/var/jenkins_home}
-ENV JENKINS_SLAVE_AGENT_PORT=${AGENT_PORT:-50000}
+ENV JENKINS_SLAVE_AGENT_PORT=${AGENT_PORT:-40000}
 ENV REF=${REF:-/usr/share/jenkins/ref}
-ENV JENKINS_VERSION=${JENKINS_VERSION:-2.289.2}
-ENV JENKINS_SHA=${JENKINS_SHA:-6e5d17bb373a4167318082abaef483f280493cb216718e68771180955df52310}
+ENV JENKINS_VERSION=${JENKINS_VERSION:-2.303.1}
+ENV JENKINS_SHA=${JENKINS_SHA:-4aae135cde63e398a1f59d37978d97604cb595314f7041d2d3bac3f0bb32c065}
 ENV DOCKER_GID=${DOCKER_GID:-115}
 
 # Jenkins is run with user `jenkins`, uid = 1000
@@ -78,6 +88,10 @@ ENV COPY_REFERENCE_FILE_LOG $JENKINS_HOME/copy_reference_file.log
 RUN touch $JENKINS_HOME/copy_reference_file.log
 RUN chown -R ${USER} "$JENKINS_HOME" "$REF"
 
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH "${JAVA_HOME}/bin:${PATH}"
+COPY --from=jre-build /javaruntime $JAVA_HOME
+
 # for main web interface:
 EXPOSE ${HTTP_PORT}
 
@@ -92,8 +106,13 @@ USER ${USER}
 COPY jenkins-support /usr/local/bin/jenkins-support
 COPY jenkins.sh /usr/local/bin/jenkins.sh
 COPY tini-shim.sh /bin/tini
+COPY jenkins-plugin-cli.sh /bin/jenkins-plugin-cli
+
+# from a derived Dockerfile, can use `RUN install-plugins.sh active.txt` to setup $REF/plugins from a support bundle
+COPY install-plugins.sh /usr/local/bin/install-plugins.sh
+
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/jenkins.sh"]
 
 # from a derived Dockerfile, can use `RUN plugins.sh active.txt` to setup ${REF}/plugins from a support bundle
-COPY plugins.sh /usr/local/bin/plugins.sh
-COPY install-plugins.sh /usr/local/bin/install-plugins.sh
+# COPY plugins.sh /usr/local/bin/plugins.sh
+# COPY install-plugins.sh /usr/local/bin/install-plugins.sh

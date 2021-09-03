@@ -14,9 +14,9 @@ services:
         GID: 1000
         DOCKER_GID: 115
         HTTP_PORT: 8080
-        AGENT_PORT: 50000
-        JENKINS_VERSION: 2.289.3
-        JENKINS_SHA: 996dfd29d5f933546af9e9f77c29b371fb0627b8266b6c9f134ac2e0f1248b87
+        AGENT_PORT: 40000
+        JENKINS_VERSION: 2.303.1
+        JENKINS_SHA: 4aae135cde63e398a1f59d37978d97604cb595314f7041d2d3bac3f0bb32c065
         JENKINS_HOME: /home/cuong/jenkins_home
         TZ: ASIA/Ho_Chi_Minh
         DEBIAN_FRONTEND: noninteractive
