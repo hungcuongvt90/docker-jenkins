@@ -13,30 +13,44 @@ FROM ubuntu:focal
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -y git curl gpg unzip libfreetype6 libfontconfig1 vim curl openjdk-11-jdk && \
+    apt-get install -y sudo git curl gpg unzip libfreetype6 libfontconfig1 vim curl openjdk-11-jdk && \
     rm -rf /var/lib/apt/lists/*
 
 # RUN apt-get update && apt-get upgrade -y && \
 #     apt-get install -y sudo git vim curl openjdk-11-jdk && \
 #     curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && apt-get install -y git-lfs && git lfs install && rm -rf /var/lib/apt/lists/*
 
-ARG TARGETARCH
+ARG BUILDPLATFORM
 ARG GIT_LFS_VERSION=2.13.3
 ENV LANG C.UTF-8
 
 # required for multi-arch support, revert to package cloud after:
 # https://github.com/git-lfs/git-lfs/issues/4546
 COPY git_lfs_pub.gpg /tmp/git_lfs_pub.gpg
-RUN GIT_LFS_ARCHIVE="git-lfs-linux-${TARGETARCH}-v${GIT_LFS_VERSION}.tar.gz" \
-    GIT_LFS_RELEASE_URL="https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/${GIT_LFS_ARCHIVE}"\
-    set -x; curl --fail --silent --location --show-error --output "/tmp/${GIT_LFS_ARCHIVE}" "${GIT_LFS_RELEASE_URL}" && \
-    curl --fail --silent --location --show-error --output "/tmp/git-lfs-sha256sums.asc" https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/sha256sums.asc && \
-    gpg --no-tty --import /tmp/git_lfs_pub.gpg && \
-    gpg -d /tmp/git-lfs-sha256sums.asc | grep "${GIT_LFS_ARCHIVE}" | (cd /tmp; sha256sum -c ) && \
-    mkdir -p /tmp/git-lfs && \
-    tar xzvf "/tmp/${GIT_LFS_ARCHIVE}" -C /tmp/git-lfs && \
-    bash -x /tmp/git-lfs/install.sh && \
-    rm -rf /tmp/git-lfs*
+RUN echo ${BUILDPLATFORM}
+RUN if [ ${BUILDPLATFORM} = "linux/amd64" ] ; then \
+        GIT_LFS_ARCHIVE="git-lfs-linux-amd64-v${GIT_LFS_VERSION}.tar.gz" \
+        GIT_LFS_RELEASE_URL="https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/${GIT_LFS_ARCHIVE}"\
+        set -x; curl --fail --silent --location --show-error --output "/tmp/${GIT_LFS_ARCHIVE}" "${GIT_LFS_RELEASE_URL}" && \
+        curl --fail --silent --location --show-error --output "/tmp/git-lfs-sha256sums.asc" https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/sha256sums.asc && \
+        gpg --no-tty --import /tmp/git_lfs_pub.gpg && \
+        gpg -d /tmp/git-lfs-sha256sums.asc | grep "${GIT_LFS_ARCHIVE}" | (cd /tmp; sha256sum -c ) && \
+        mkdir -p /tmp/git-lfs && \
+        tar xzvf "/tmp/${GIT_LFS_ARCHIVE}" -C /tmp/git-lfs && \
+        bash -x /tmp/git-lfs/install.sh && \
+        rm -rf /tmp/git-lfs*; \
+    else \
+        GIT_LFS_ARCHIVE="git-lfs-linux-arm64-v${GIT_LFS_VERSION}.tar.gz" \
+        GIT_LFS_RELEASE_URL="https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/${GIT_LFS_ARCHIVE}"\
+        set -x; curl --fail --silent --location --show-error --output "/tmp/${GIT_LFS_ARCHIVE}" "${GIT_LFS_RELEASE_URL}" && \
+        curl --fail --silent --location --show-error --output "/tmp/git-lfs-sha256sums.asc" https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/sha256sums.asc && \
+        gpg --no-tty --import /tmp/git_lfs_pub.gpg && \
+        gpg -d /tmp/git-lfs-sha256sums.asc | grep "${GIT_LFS_ARCHIVE}" | (cd /tmp; sha256sum -c ) && \
+        mkdir -p /tmp/git-lfs && \
+        tar xzvf "/tmp/${GIT_LFS_ARCHIVE}" -C /tmp/git-lfs && \
+        bash -x /tmp/git-lfs/install.sh && \
+        rm -rf /tmp/git-lfs*; \
+    fi
 
 ARG USER
 ARG GROUP
@@ -55,12 +69,12 @@ ENV GROUP=${GROUP:-cuong}
 ENV UID=${UID:-1000}
 ENV GID=${GID:-1000}
 ENV HTTP_PORT=${HTTP_PORT:-8080}
-ENV AGENT_PORT=${AGENT_PORT:-50000}
+ENV AGENT_PORT=${AGENT_PORT:-40000}
 ENV JENKINS_HOME=${JENKINS_HOME:-/var/jenkins_home}
-ENV JENKINS_SLAVE_AGENT_PORT=${AGENT_PORT:-50000}
+ENV JENKINS_SLAVE_AGENT_PORT=${AGENT_PORT:-40000}
 ENV REF=${REF:-/usr/share/jenkins/ref}
-ENV JENKINS_VERSION=${JENKINS_VERSION:-2.289.2}
-ENV JENKINS_SHA=${JENKINS_SHA:-6e5d17bb373a4167318082abaef483f280493cb216718e68771180955df52310}
+ENV JENKINS_VERSION=${JENKINS_VERSION:-2.303.1}
+ENV JENKINS_SHA=${JENKINS_SHA:-4aae135cde63e398a1f59d37978d97604cb595314f7041d2d3bac3f0bb32c065}
 ENV DOCKER_GID=${DOCKER_GID:-115}
 
 
@@ -70,11 +84,10 @@ ENV DOCKER_GID=${DOCKER_GID:-115}
 RUN mkdir -p $JENKINS_HOME \
   && chown ${UID}:${GID} $JENKINS_HOME \
   && groupadd -g ${GID} ${GROUP} \
-  && useradd -d "$JENKINS_HOME" -u ${UID} -g ${GID} -m -s /bin/bash ${USER} && \
-  usermod -aG sudo ${USER}
+  && useradd -d "$JENKINS_HOME" -u ${UID} -g ${GID} -m -s /bin/bash ${USER}
 
-RUN ls -la /etc/
-RUN echo "${USER} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/${USER}
+RUN ls -la /etc
+RUN mkdir -p /etc/sudoers.d/ && touch /etc/sudoers.d/${USER} && echo "${USER} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/${USER}
 
 # Jenkins home directory is a volume, so configuration and build history
 # can be persisted and survive image upgrades
@@ -111,8 +124,10 @@ ENV JENKINS_UC https://updates.jenkins.io
 ENV JENKINS_UC_EXPERIMENTAL=https://updates.jenkins.io/experimental
 ENV JENKINS_INCREMENTALS_REPO_MIRROR=https://repo.jenkins-ci.org/incrementals
 ENV COPY_REFERENCE_FILE_LOG $JENKINS_HOME/copy_reference_file.log
-RUN touch $JENKINS_HOME/copy_reference_file.log
-RUN chown -R ${USER} "$JENKINS_HOME" "$REF"
+ENV WAR_FILE $JENKINS_HOME/war
+RUN touch $COPY_REFERENCE_FILE_LOG && chmod 777 $COPY_REFERENCE_FILE_LOG
+RUN mkdir -p ${WAR_FILE}
+RUN chown -R ${USER}:${GID} "$JENKINS_HOME" "$REF" "$WAR_FILE"
 
 ARG PLUGIN_CLI_VERSION=2.9.3
 ARG PLUGIN_CLI_URL=https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/${PLUGIN_CLI_VERSION}/jenkins-plugin-manager-${PLUGIN_CLI_VERSION}.jar
@@ -124,11 +139,10 @@ EXPOSE ${HTTP_PORT}
 # will be used by attached slave agents:
 EXPOSE ${AGENT_PORT}
 
-ENV COPY_REFERENCE_FILE_LOG $JENKINS_HOME/copy_reference_file.log
 ENV JENKINS_ENABLE_FUTURE_JAVA=true
 
-RUN sudo groupadd -g ${DOCKER_GID} docker && \
-    sudo usermod -aG docker $USER
+RUN groupadd -g ${DOCKER_GID} docker && \
+    usermod -aG docker $USER
 
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH "${JAVA_HOME}/bin:${PATH}"
