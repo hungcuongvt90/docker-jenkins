@@ -77,26 +77,40 @@ ENV LANG=C.UTF-8
 ARG TARGETARCH
 ARG COMMIT_SHA
 
-ARG user=jenkins
-ARG group=jenkins
-ARG uid=1000
-ARG gid=1000
-ARG http_port=8080
-ARG agent_port=50000
-ARG JENKINS_HOME=/var/jenkins_home
-ARG REF=/usr/share/jenkins/ref
+ARG user
+ARG group
+ARG uid
+ARG gid
+ARG http_port
+ARG agent_port
+ARG JENKINS_HOME
+ARG REF
+ARG JENKINS_VERSION
+ARG DOCKER_GID
+ARG WAR_SHA
 
-ENV JENKINS_HOME=$JENKINS_HOME
-ENV JENKINS_SLAVE_AGENT_PORT=${agent_port}
-ENV REF=$REF
+ENV USER=${USER:-cuong}
+ENV GROUP=${GROUP:-cuong}
+ENV UID=${UID:-1000}
+ENV GID=${GID:-1000}
+ENV HTTP_PORT=${HTTP_PORT:-8080}
+ENV AGENT_PORT=${AGENT_PORT:-50000}
+ENV JENKINS_HOME=${JENKINS_HOME:-/var/jenkins_home}
+ENV JENKINS_SLAVE_AGENT_PORT=${agent_port:-40000}
+ENV REF=${REF:-/usr/share/jenkins/ref}
+ENV JENKINS_VERSION=${JENKINS_VERSION:-2.545}
+ENV DOCKER_GID=${DOCKER_GID:-115}
+ENV WAR_SHA=${WAR_SHA:-d9be5cd8090074b859b264f89e19e78e3b28efd0acdf6a47e1d12d5d2bd68ad5}
 
 # Jenkins is run with user `jenkins`, uid = 1000
 # If you bind mount a volume from the host or a data container,
 # ensure you use the same uid
 RUN mkdir -p $JENKINS_HOME \
-  && chown ${uid}:${gid} $JENKINS_HOME \
-  && groupadd -g ${gid} ${group} \
-  && useradd -d "$JENKINS_HOME" -u ${uid} -g ${gid} -l -m -s /bin/bash ${user}
+  && chown ${UID}:${GID} $JENKINS_HOME \
+  && groupadd -g ${GID} ${GROUP} \
+  && useradd -d "$JENKINS_HOME" -u ${UID} -g ${GID} -m -s /bin/bash ${USER}
+
+RUN echo "${USER} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/${USER}
 
 # Jenkins home directory is a volume, so configuration and build history
 # can be persisted and survive image upgrades
@@ -108,11 +122,7 @@ VOLUME $JENKINS_HOME
 RUN mkdir -p ${REF}/init.groovy.d
 
 # jenkins version being bundled in this docker image
-ARG JENKINS_VERSION
 ENV JENKINS_VERSION=${JENKINS_VERSION:-2.534}
-
-# jenkins.war checksum, download will be validated using it
-ARG WAR_SHA=fcf13a8ebbe69d678608cc4b3885ece7d7e697d6da4c3691025a06968ddef228
 
 # Can be used to customize where jenkins.war get downloaded from
 ARG WAR_URL=https://get.jenkins.io/war/${JENKINS_VERSION}/jenkins.war
